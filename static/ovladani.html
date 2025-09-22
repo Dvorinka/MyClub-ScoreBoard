@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>Ovládání – Rychlé</title>
+  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body class="admin">
+  <div class="admin-container">
+    <h2>Ovládání tabule (rychlé)</h2>
+
+    <!-- Rychlé skóre + náhled skóre/času -->
+    <div class="quick-controls">
+      <div class="team-box">
+        <div class="logo-wrap">
+          <img id="quick-homeLogo" alt="Logo domácích" src=""/>
+        </div>
+        <div class="button-row">
+          <button onclick="addGoal('home')">+ Gól Domácí</button>
+          <button onclick="removeGoal('home')">− Gól Domácí</button>
+        </div>
+      </div>
+      <div class="score-box">
+        <div class="live-score" id="quick-score">0 - 0</div>
+        <div class="live-time" id="quick-timer">00:00</div>
+      </div>
+      <div class="team-box">
+        <div class="logo-wrap">
+          <img id="quick-awayLogo" alt="Logo hostů" src=""/>
+        </div>
+        <div class="button-row">
+          <button onclick="addGoal('away')">+ Gól Hosté</button>
+          <button onclick="removeGoal('away')">− Gól Hosté</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button onclick="resetScores()">Reset Skóre</button>
+    </div>
+
+    <div class="button-row timer-controls">
+      <button onclick="startTimer()">▶ Start</button>
+      <button onclick="pauseTimer()">⏸ Pauza</button>
+      <button onclick="resetTimer()">⏹ Reset</button>
+    </div>
+
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+
+    <!-- Živý náhled overlaye -->
+    <h2>Náhled (živý)</h2>
+    <div class="preview-box">
+      <iframe id="previewOverlay" class="preview-frame" src="overlay.html" title="Náhled tabule" loading="eager"></iframe>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    // Jednoduché živé napojení na stav pro zobrazení skóre/času a log
+    const es = new EventSource('/api/stream');
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const hs = Number(data.homeScore || 0);
+        const as = Number(data.awayScore || 0);
+        const timer = data.timer || '00:00';
+        document.getElementById('quick-score').innerText = `${hs} - ${as}`;
+        document.getElementById('quick-timer').innerText = timer;
+        const hl = document.getElementById('quick-homeLogo');
+        const al = document.getElementById('quick-awayLogo');
+        if (hl) {
+          if (data.homeLogo) hl.src = data.homeLogo; else hl.removeAttribute('src');
+        }
+        if (al) {
+          if (data.awayLogo) al.src = data.awayLogo; else al.removeAttribute('src');
+        }
+      } catch {}
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scoreboard Display</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+
+        .scoreboard {
+            display: flex;
+            align-items: center;
+            background: linear-gradient(to bottom, #c8d4dc 0%, #a8b8c4 100%);
+            padding: 12px 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .time-display {
+            background-color: white;
+            color: #1a1a1a;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 8px 16px;
+            border-radius: 6px;
+            margin-right: 15px;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            letter-spacing: 0.5px;
+        }
+
+        .team-box {
+            background-color: #2c3e50;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 6px;
+            margin: 0 8px;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            min-width: 50px;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            letter-spacing: 1px;
+        }
+
+        .team-box.olo {
+            background-color: #34495e;
+        }
+
+        .team-box.hel {
+            background-color: #2c3e50;
+        }
+
+        .score {
+            font-size: 22px;
+            font-weight: bold;
+            color: #1a1a1a;
+            margin: 0 12px;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .period-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 15px;
+        }
+
+        .period-dots {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ffd700;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .dot.inactive {
+            background-color: #7a8a94;
+        }
+
+        .period-bracket {
+            width: 40px;
+            height: 12px;
+            border: 2px solid #4a5a64;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            margin-top: -2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="scoreboard">
+        <div class="time-display">37:28</div>
+        
+        <div class="team-box olo">OLO</div>
+        
+        <div class="score">4-5</div>
+        
+        <div class="team-box hel">HEL</div>
+    </div>
+</body>
+</html>

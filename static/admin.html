@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Tabule</title>
+  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  
+</head>
+<body class="admin">
+  <div class="admin-container">
+    <h2>Ovládání tabule</h2>
+    <div class="button-row" style="margin-top: -6px;">
+      <a href="/ovladani.html" style="text-decoration:none">
+        <button type="button">Přepnout na rychlé ovládání (/ovladani)</button>
+      </a>
+    </div>
+
+    <div class="form-grid">
+      <label>Domácí tým
+        <input id="homeName" type="text" placeholder="Název domácích">
+      </label>
+      <label>Logo domácího (URL)
+        <input id="homeLogo" type="text" placeholder="https://.../logo-domaci.png">
+      </label>
+
+      <label>Hostující tým
+        <input id="awayName" type="text" placeholder="Název hostů">
+      </label>
+      <label>Logo hostujícího (URL)
+        <input id="awayLogo" type="text" placeholder="https://.../logo-hosti.png">
+      </label>
+    </div>
+
+    <div class="button-row">
+      <button onclick="addGoal('home')">+ Gól Domácí</button>
+      <button onclick="removeGoal('home')">− Gól Domácí</button>
+      <button onclick="addGoal('away')">+ Gól Hosté</button>
+      <button onclick="removeGoal('away')">− Gól Hosté</button>
+      <button onclick="resetScores()">Reset Skóre</button>
+    </div>
+
+    <div class="form-grid">
+      <label>Délka poločasu (min)
+        <input id="halfLength" type="number" value="45" min="1">
+      </label>
+    </div>
+    
+    <div class="button-row">
+      <button onclick="startTimer()">▶ Start</button>
+      <button onclick="pauseTimer()">⏸ Pauza</button>
+      <button onclick="resetTimer()">⏹ Reset</button>
+    </div>
+
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+
+    <h2>Vzhled</h2>
+    <div class="form-grid">
+      <label>Styl tabule
+        <select id="theme">
+          <option value="classic">Klasický</option>
+          <option value="pill">Pilulka (moderní)</option>
+          <option value="var1">Varianta 1</option>
+          <option value="var2">Varianta 2</option>
+          <option value="var3">Varianta 3</option>
+          <option value="var4">Varianta 4</option>
+        </select>
+      </label>
+
+      <label>Zkratka domácího (3 písmena)
+        <input id="homeShort" type="text" maxlength="3" placeholder="DOM">
+      </label>
+
+      <label>Zkratka hostujícího (3 písmena)
+        <input id="awayShort" type="text" maxlength="3" placeholder="HOS">
+      </label>
+
+      <label>Barva domácího
+        <input id="primaryColor" type="color" value="#1e3a8a">
+      </label>
+
+      <label>Barva hostujícího
+        <input id="secondaryColor" type="color" value="#2563eb">
+      </label>
+    </div>
+
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+
+    <h2>Import dat</h2>
+    <div class="form-grid">
+      <label>Soubor JSON se stavem tabule
+        <input id="importFile" type="file" accept="application/json">
+      </label>
+    </div>
+    <div class="button-row">
+      <button onclick="importFromFile(document.getElementById('importFile').files[0])">Importovat</button>
+      <button onclick="exportToFile()">Exportovat</button>
+    </div>
+
+    <h2>Uložit/Načíst na serveru</h2>
+    <div class="form-grid">
+      <label>Název souboru (bez .json)
+        <input id="saveFilename" type="text" placeholder="např. zapas-1">
+      </label>
+      <label>Dostupné uložené stavy
+        <select id="savesList"></select>
+      </label>
+    </div>
+    <div class="button-row">
+      <button onclick="saveToServer()">Uložit na server</button>
+      <button onclick="loadFromServer()">Načíst ze serveru</button>
+    </div>
+
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+
+    <h2>Náhled (živý)</h2>
+    <div class="preview-box">
+      <iframe id="previewOverlay" class="preview-frame" src="overlay.html" title="Náhled tabule" loading="eager"></iframe>
+    </div>
+
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "homeName": "Bizoni UH",
+  "homeLogo": "https://www.bizoniuh.cz/img/logo.png",
+  "homeScore": 0,
+  "awayName": "Real Top Frýdek Místek",
+  "awayLogo": "https://realtopfm.cz/wp-content/uploads/2025/08/Znak_klubu_-600x600.png",
+  "awayScore": 0,
+  "timer": "00:00",
+  "running": false,
+  "halfLength": 45,
+  "theme": "pill",
+  "homeShort": "BIZ",
+  "awayShort": "RTF",
+  "primaryColor": "#d43c3b",
+  "secondaryColor": "#dd9a08"
+}
