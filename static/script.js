@@ -384,3 +384,46 @@ async function loadFromServer() {
 
 // Populate saves list if present
 refreshSavesList();
+
+// Ensure functions are available globally for inline onclick handlers
+// This helps in environments where script execution order or scoping is altered (e.g., Cloudflare optimizations)
+window.addGoal = addGoal;
+window.removeGoal = removeGoal;
+window.resetScores = resetScores;
+window.startTimer = startTimer;
+window.pauseTimer = pauseTimer;
+window.resetTimer = resetTimer;
+window.swapSides = swapSides;
+window.startSecondHalf = startSecondHalf;
+window.importFromFile = importFromFile;
+window.exportToFile = exportToFile;
+window.saveToServer = saveToServer;
+window.loadFromServer = loadFromServer;
+
+// Fallback bindings: if inline handlers are stripped or blocked, bind events via JS
+// We skip elements that still have an inline onclick to avoid double actions
+document.addEventListener('DOMContentLoaded', () => {
+  const bindIfNoInline = (selector, handler) => {
+    document.querySelectorAll(selector).forEach(el => {
+      if (el.hasAttribute('onclick')) return; // inline present; let it handle
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try { handler(e); } catch {}
+      });
+    });
+  };
+
+  bindIfNoInline("button[onclick*=\"addGoal('home')\"]", () => addGoal('home'));
+  bindIfNoInline("button[onclick*=\"addGoal('away')\"]", () => addGoal('away'));
+  bindIfNoInline("button[onclick*=\"removeGoal('home')\"]", () => removeGoal('home'));
+  bindIfNoInline("button[onclick*=\"removeGoal('away')\"]", () => removeGoal('away'));
+  bindIfNoInline("button[onclick*=\"resetScores()\"]", () => resetScores());
+
+  bindIfNoInline("button[onclick*=\"startTimer()\"]", () => startTimer());
+  bindIfNoInline("button[onclick*=\"pauseTimer()\"]", () => pauseTimer());
+  bindIfNoInline("button[onclick*=\"resetTimer()\"]", () => resetTimer());
+
+  bindIfNoInline("button[onclick*=\"swapSides()\"]", () => swapSides());
+  bindIfNoInline("button[onclick*=\"startSecondHalf()\"]", () => startSecondHalf());
+});
