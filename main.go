@@ -122,6 +122,43 @@ func loadSavedHandler(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 
+// swapSidesHandler swaps home and away teams including names, logos, scores, shorts and colors.
+func swapSidesHandler(w http.ResponseWriter, r *http.Request) {
+    stateMu.Lock()
+    // swap names
+    state.HomeName, state.AwayName = state.AwayName, state.HomeName
+    // swap logos
+    state.HomeLogo, state.AwayLogo = state.AwayLogo, state.HomeLogo
+    // swap scores
+    state.HomeScore, state.AwayScore = state.AwayScore, state.HomeScore
+    // swap shorts
+    state.HomeShort, state.AwayShort = state.AwayShort, state.HomeShort
+    // swap colors so that team colors follow the team to the other side
+    state.PrimaryColor, state.SecondaryColor = state.SecondaryColor, state.PrimaryColor
+    stateMu.Unlock()
+    broadcast()
+    w.WriteHeader(http.StatusOK)
+}
+
+// startSecondHalfHandler swaps sides, resets the timer to 00:00 and immediately starts it.
+func startSecondHalfHandler(w http.ResponseWriter, r *http.Request) {
+    stateMu.Lock()
+    // swap first
+    state.HomeName, state.AwayName = state.AwayName, state.HomeName
+    state.HomeLogo, state.AwayLogo = state.AwayLogo, state.HomeLogo
+    state.HomeScore, state.AwayScore = state.AwayScore, state.HomeScore
+    state.HomeShort, state.AwayShort = state.AwayShort, state.HomeShort
+    state.PrimaryColor, state.SecondaryColor = state.SecondaryColor, state.PrimaryColor
+    // reset and start timer for next half
+    state.Running = true
+    elapsedSeconds = 0
+    startTime = time.Now()
+    state.Timer = "00:00"
+    stateMu.Unlock()
+    broadcast()
+    w.WriteHeader(http.StatusOK)
+}
+
 // sanitizeFilename keeps only [a-zA-Z0-9-_] and dots, strips path separators
 func sanitizeFilename(in string) string {
     in = strings.TrimSpace(in)
@@ -326,6 +363,9 @@ func main() {
 	http.HandleFunc("/api/save", saveHandler)
 	http.HandleFunc("/api/saves", listSavesHandler)
 	http.HandleFunc("/api/load", loadSavedHandler)
+	// New: swap sides and start second half
+	http.HandleFunc("/api/swapSides", swapSidesHandler)
+	http.HandleFunc("/api/timer/secondHalf", startSecondHalfHandler)
 
 	fmt.Println("Server běží na http://localhost:5000")
 	go timerLoop()

@@ -208,6 +208,28 @@ async function resetTimer() {
   await fetch('/api/timer/reset', { method: 'POST' });
 }
 
+// Swap teams and scores (also names, logos, shorts, colors)
+async function swapSides() {
+  try {
+    const res = await fetch('/api/swapSides', { method: 'POST' });
+    if (!res.ok) throw new Error('swap failed');
+    await loadState();
+  } catch (e) {
+    alert('Prohození stran se nezdařilo');
+  }
+}
+
+// Start second half: swaps sides, resets timer to 00:00 and starts running
+async function startSecondHalf() {
+  try {
+    const res = await fetch('/api/timer/secondHalf', { method: 'POST' });
+    if (!res.ok) throw new Error('second half failed');
+    await loadState();
+  } catch (e) {
+    alert('Start 2. poločasu se nezdařil');
+  }
+}
+
 // při změně inputů rovnou aktualizujeme stav
 document.querySelectorAll("input").forEach(inp => {
   inp.addEventListener("input", (e) => {
