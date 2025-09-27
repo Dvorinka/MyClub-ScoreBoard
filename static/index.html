@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MyClub ScoreBoard – Rozcestník</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .landing {
+      max-width: 840px;
+      margin: 48px auto;
+      padding: 24px;
+      border-radius: 16px;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+    .landing h1 { margin: 0 0 8px; font-size: 28px; }
+    .landing p { margin: 0 0 16px; color: #444; }
+    .link-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 16px;
+    }
+    .card {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px;
+      background: #fafafa;
+      transition: transform 0.08s ease, box-shadow 0.15s ease;
+    }
+    .card:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,0.08); }
+    .card h2 { margin: 0 0 8px; font-size: 18px; }
+    .card p { margin: 0; color: #666; font-size: 14px; }
+    @media (max-width: 720px) { .link-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="admin">
+  <div class="landing">
+    <h1>MyClub ScoreBoard</h1>
+    <p>Vyberte si stránku aplikace:</p>
+    <div class="link-grid">
+      <a class="card" href="/admin.html">
+        <h2>Admin</h2>
+        <p>Plná konfigurace týmu, barvy, vzhled, import/export…</p>
+      </a>
+      <a class="card" href="/overlay.html" target="_blank">
+        <h2>Overlay</h2>
+        <p>Veřejné zobrazení tabule (otevře se v nové záložce).</p>
+      </a>
+      <a class="card" href="/ovladani.html">
+        <h2>Rychlé ovládání</h2>
+        <p>Jednoduché přidávání gólů, pauza/spuštění času, náhled.</p>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

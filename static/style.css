@@ -299,14 +299,21 @@ body {
     .form-grid { grid-template-columns: 1fr; }
     .scoreboard { padding: 14px 16px; font-size: 28px; }
     #homeScore, #awayScore { font-size: 34px; }
-    .scoreboard.pill { padding: 6px 8px; scale: 1.7; }
+    /* Make pill layout smaller on phones to avoid overflow */
+    .scoreboard.pill {
+      padding: 6px 8px;
+      transform: scale(1.0); /* override desktop transform */
+      transform-origin: center;
+    }
     .pill .seg.timer, .pill .seg.score { padding: 4px 10px; }
     /* Admin mobile tweaks */
     body.admin .admin-container { margin: 24px auto; padding: 16px; border-radius: 12px; }
     body.admin .quick-controls { gap: 12px; }
     body.admin .quick-controls .team-box { width: 100%; }
     body.admin .quick-controls .score-box { min-width: 0; }
-    body.admin .preview-frame { height: 220px; }
+    /* Improve preview usability on phones */
+    body.admin .preview-box { overflow: auto; -webkit-overflow-scrolling: touch; }
+    body.admin .preview-frame { height: 50vh; min-height: 220px; }
     body.admin .timer-controls { padding: 12px 10px; }
   }
 
@@ -363,13 +370,15 @@ body {
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     padding: 8px;
+    overflow: auto; /* allow scrolling preview on small screens */
   }
   body.admin .preview-frame {
     width: 100%;
-    height: 260px;
+    height: 260px; /* overridden by mobile media query */
     border: 0;
     background: white;
     border-radius: 8px;
+    display: block;
   }
 
   /* Variant 1 (based on var1.html) */

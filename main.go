@@ -32,6 +32,8 @@ type Scoreboard struct {
 	AwayShort      string `json:"awayShort"`
 	PrimaryColor   string `json:"primaryColor"`
 	SecondaryColor string `json:"secondaryColor"`
+    SidesFlipped   bool   `json:"sidesFlipped"`
+    Half           int    `json:"half"`
 }
 
 // saveHandler saves current state to saved/<filename>.json
@@ -105,6 +107,8 @@ func loadSavedHandler(w http.ResponseWriter, r *http.Request) {
     // Přepiš stav jako v importHandler
     stateMu.Lock()
     state = imported
+    // Defaults for older saves
+    if state.Half <= 0 { state.Half = 1 }
     if strings.TrimSpace(state.HomeShort) == "" {
         state.HomeShort = makeShort(state.HomeName)
     }
@@ -122,38 +126,29 @@ func loadSavedHandler(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 
-// swapSidesHandler swaps home and away teams including names, logos, scores, shorts and colors.
+// swapSidesHandler toggles visual sides flipping only. It does NOT swap team data.
 func swapSidesHandler(w http.ResponseWriter, r *http.Request) {
     stateMu.Lock()
-    // swap names
-    state.HomeName, state.AwayName = state.AwayName, state.HomeName
-    // swap logos
-    state.HomeLogo, state.AwayLogo = state.AwayLogo, state.HomeLogo
-    // swap scores
-    state.HomeScore, state.AwayScore = state.AwayScore, state.HomeScore
-    // swap shorts
-    state.HomeShort, state.AwayShort = state.AwayShort, state.HomeShort
-    // swap colors so that team colors follow the team to the other side
-    state.PrimaryColor, state.SecondaryColor = state.SecondaryColor, state.PrimaryColor
+    state.SidesFlipped = !state.SidesFlipped
     stateMu.Unlock()
     broadcast()
     w.WriteHeader(http.StatusOK)
 }
 
-// startSecondHalfHandler swaps sides, resets the timer to 00:00 and immediately starts it.
+// startSecondHalfHandler flips sides visually for second half and continues timer from end of 1st half.
 func startSecondHalfHandler(w http.ResponseWriter, r *http.Request) {
     stateMu.Lock()
-    // swap first
-    state.HomeName, state.AwayName = state.AwayName, state.HomeName
-    state.HomeLogo, state.AwayLogo = state.AwayLogo, state.HomeLogo
-    state.HomeScore, state.AwayScore = state.AwayScore, state.HomeScore
-    state.HomeShort, state.AwayShort = state.AwayShort, state.HomeShort
-    state.PrimaryColor, state.SecondaryColor = state.SecondaryColor, state.PrimaryColor
-    // reset and start timer for next half
+    // Flip visually only
+    state.SidesFlipped = !state.SidesFlipped
+    // Move to second half and continue from end of first half
+    state.Half = 2
+    // Ensure elapsedSeconds reflects end of first half
+    if elapsedSeconds < state.HalfLength*60 {
+        elapsedSeconds = state.HalfLength * 60
+    }
+    startTime = time.Now().Add(-time.Duration(elapsedSeconds) * time.Second)
     state.Running = true
-    elapsedSeconds = 0
-    startTime = time.Now()
-    state.Timer = "00:00"
+    state.Timer = fmt.Sprintf("%02d:%02d", elapsedSeconds/60, elapsedSeconds%60)
     stateMu.Unlock()
     broadcast()
     w.WriteHeader(http.StatusOK)
@@ -329,6 +324,8 @@ var state = Scoreboard{
 	AwayShort:      "HOS",
 	PrimaryColor:   "#1e3a8a",
 	SecondaryColor: "#2563eb",
+    SidesFlipped:   false,
+    Half:           1,
 }
 
 var clients = make(map[chan string]bool)
@@ -487,74 +484,96 @@ func broadcast() {
 // --- Timer backend ---
 
 func timerLoop() {
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-	for range ticker.C {
-		stateMu.Lock()
-		if state.Running {
-			// přepočet uplynulého času od startu
-			elapsed := time.Since(startTime).Seconds()
-			if elapsed < 0 {
-				elapsed = 0
-			}
-			elapsedSeconds = int(elapsed)
-			// kontrola konce poločasu
-			if elapsedSeconds >= state.HalfLength*60 {
-				state.Running = false
-				// necháme čas na max hodnotě poločasu
-				elapsedSeconds = state.HalfLength * 60
-			}
-			state.Timer = fmt.Sprintf("%02d:%02d", elapsedSeconds/60, elapsedSeconds%60)
-			stateMu.Unlock()
-			broadcast()
-			continue
-		}
-		stateMu.Unlock()
-	}
+    // Higher-frequency ticker to reduce perceived start latency and update when the second actually changes
+    ticker := time.NewTicker(200 * time.Millisecond)
+    defer ticker.Stop()
+    lastSecond := -1
+    wasRunning := false
+    for range ticker.C {
+        stateMu.Lock()
+        if state.Running {
+            // přepočet uplynulého času od startu
+            elapsed := time.Since(startTime).Seconds()
+            if elapsed < 0 {
+                elapsed = 0
+            }
+            sec := int(elapsed)
+            // kontrola konce dle aktuálního poločasu
+            maxSeconds := state.HalfLength * 60
+            if state.Half >= 2 {
+                maxSeconds = state.HalfLength * 120
+            }
+            if sec >= maxSeconds {
+                state.Running = false
+                sec = maxSeconds
+            }
+            // update only when integer seconds changed or when just started running
+            if sec != lastSecond || !wasRunning {
+                elapsedSeconds = sec
+                state.Timer = fmt.Sprintf("%02d:%02d", elapsedSeconds/60, elapsedSeconds%60)
+                stateMu.Unlock()
+                broadcast()
+                lastSecond = sec
+                wasRunning = true
+                continue
+            }
+            wasRunning = true
+            stateMu.Unlock()
+            continue
+        }
+        // not running
+        wasRunning = false
+        lastSecond = -1
+        stateMu.Unlock()
+    }
 }
 
 func parseTimerToSeconds(timer string) int {
-	// očekáváme tvar MM:SS
-	parts := strings.Split(timer, ":")
-	if len(parts) != 2 {
-		return 0
-	}
-	m, err1 := strconv.Atoi(parts[0])
-	s, err2 := strconv.Atoi(parts[1])
-	if err1 != nil || err2 != nil || m < 0 || s < 0 || s >= 60 {
-		return 0
-	}
-	return m*60 + s
+    // očekáváme tvar MM:SS
+    parts := strings.Split(timer, ":")
+    if len(parts) != 2 {
+        return 0
+    }
+    m, err1 := strconv.Atoi(parts[0])
+    s, err2 := strconv.Atoi(parts[1])
+    if err1 != nil || err2 != nil || m < 0 || s < 0 || s >= 60 {
+        return 0
+    }
+    return m*60 + s
 }
 
 func startTimerHandler(w http.ResponseWriter, r *http.Request) {
-	stateMu.Lock()
-	// pokud máme nějaký existující čas na state.Timer, vezmeme ho jako výchozí offset
-	if elapsedSeconds == 0 {
-		elapsedSeconds = parseTimerToSeconds(state.Timer)
-	}
-	startTime = time.Now().Add(-time.Duration(elapsedSeconds) * time.Second)
-	state.Running = true
-	stateMu.Unlock()
-	w.WriteHeader(http.StatusOK)
+    stateMu.Lock()
+    // pokud máme nějaký existující čas na state.Timer, vezmeme ho jako výchozí offset
+    if state.Timer != "" {
+        elapsedSeconds = parseTimerToSeconds(state.Timer)
+    }
+    startTime = time.Now().Add(-time.Duration(elapsedSeconds) * time.Second)
+    if state.Half <= 0 { state.Half = 1 }
+    state.Running = true
+    // emit immediate update so UI reflects running state without waiting for next tick
+    state.Timer = fmt.Sprintf("%02d:%02d", elapsedSeconds/60, elapsedSeconds%60)
+    stateMu.Unlock()
+    broadcast()
+    w.WriteHeader(http.StatusOK)
 }
 
 func pauseTimerHandler(w http.ResponseWriter, r *http.Request) {
-	stateMu.Lock()
-	// fixujeme dosavadní elapsedSeconds
-	if state.Running {
-		elapsed := time.Since(startTime).Seconds()
-		if elapsed < 0 {
-			elapsed = 0
-		}
-		elapsedSeconds = int(elapsed)
-	}
-	state.Running = false
-	// zaktualizujeme zobrazený čas
-	state.Timer = fmt.Sprintf("%02d:%02d", elapsedSeconds/60, elapsedSeconds%60)
-	stateMu.Unlock()
-	broadcast()
-	w.WriteHeader(http.StatusOK)
+    stateMu.Lock()
+    // fixujeme dosavadní elapsedSeconds
+    if state.Running {
+        elapsed := time.Since(startTime).Seconds()
+        if elapsed < 0 {
+            elapsed = 0
+        }
+        elapsedSeconds = int(elapsed)
+    }
+    state.Running = false
+    // zaktualizujeme zobrazený čas
+    state.Timer = fmt.Sprintf("%02d:%02d", elapsedSeconds/60, elapsedSeconds%60)
+    stateMu.Unlock()
+    broadcast()
+    w.WriteHeader(http.StatusOK)
 }
 
 func resetTimerHandler(w http.ResponseWriter, r *http.Request) {
@@ -563,6 +582,7 @@ func resetTimerHandler(w http.ResponseWriter, r *http.Request) {
 	elapsedSeconds = 0
 	startTime = time.Time{}
 	state.Timer = "00:00"
+    state.Half = 1
 	stateMu.Unlock()
 	broadcast()
 	w.WriteHeader(http.StatusOK)
@@ -604,6 +624,8 @@ func importHandler(w http.ResponseWriter, r *http.Request) {
 	// Přepíšeme stav a správně nastavíme timer
 	stateMu.Lock()
 	state = imported
+	// Defaults for older saves
+	if state.Half <= 0 { state.Half = 1 }
 	// pokud chybí zkratky, odvoď je ze jmen
 	if strings.TrimSpace(state.HomeShort) == "" {
 		state.HomeShort = makeShort(state.HomeName)
