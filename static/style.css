@@ -57,7 +57,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 30px;
+    height: 36px;
   }
 
   .scoreboard.pill .seg.timer {
@@ -90,17 +90,17 @@ body {
   .scoreboard.pill .seg.team.away::after {
     position: absolute;
     top: 0;
-    width: 14px;
+    width: 12px;
     height: 100%;
     background: inherit;
   }
   .scoreboard.pill .seg.team.home::before {
-    left: -10px;
+    left: -6px; /* match pill horizontal padding for seamless cap */
     border-top-left-radius: 999px;
     border-bottom-left-radius: 999px;
   }
   .scoreboard.pill .seg.team.away::after {
-    right: -10px;
+    right: -6px; /* match pill horizontal padding for seamless cap */
     border-top-right-radius: 999px;
     border-bottom-right-radius: 999px;
   }
@@ -128,8 +128,8 @@ body {
 
   /* small logos inside team segments */
   .scoreboard.pill .team .logo {
-    width: 16px;
-    height: 16px;
+    width: 24px;
+    height: 24px;
     object-fit: contain;
     margin-right: 6px; /* home: logo left of text */
     filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));
@@ -380,6 +380,35 @@ body {
     border-radius: 8px;
     display: block;
   }
+
+  /* Admin: sponsors grid */
+  body.admin .sponsors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    align-items: stretch;
+  }
+  body.admin .sponsors-grid .sponsor-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px;
+  }
+  body.admin .sponsors-grid .sponsor-item img {
+    max-width: 120px;
+    max-height: 80px;
+    object-fit: contain;
+    background: #000;
+    border-radius: 8px;
+    padding: 6px;
+    filter: none;
+  }
+  body.admin .sponsors-grid .sponsor-item button { width: 100%; }
 
   /* Variant 1 (based on var1.html) */
   .v1 .v1-scoreboard {

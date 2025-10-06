@@ -53,8 +53,7 @@
     </div>
 
     <div class="button-row">
-      <button onclick="swapSides()">⇄ Prohodit strany (jen vizuálně)</button>
-      <button onclick="startSecondHalf()">▶ Začít 2. poločas (vizuálně prohodí a pokračuje v čase)</button>
+      <button onclick="startSecondHalf()">▶ Začít 2. poločas</button>
     </div>
 
     <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
@@ -115,6 +114,26 @@
       <button onclick="saveToServer()">Uložit na server</button>
       <button onclick="loadFromServer()">Načíst ze serveru</button>
     </div>
+
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+
+    <h2>Sponzoři</h2>
+    <div class="form-grid">
+      <label>Loga sponzorů (vyberte více souborů)
+        <input id="sponsorFiles" type="file" multiple accept="image/*">
+      </label>
+    </div>
+    <div class="button-row">
+      <button onclick="uploadSponsorsFromInput()">Nahrát sponzory</button>
+    </div>
+
+    <div class="form-grid">
+      <label>Seznam sponzorů (náhledy, klikněte Smazat pro odebrání)
+        <div id="sponsorsList" class="sponsors-grid"></div>
+      </label>
+    </div>
+
+    <p style="margin-top:8px; color:#333">Pro OBS přidejte Browser Source s URL: <code>http://localhost:5000/sponsors</code>. Spodní lišta má černé pozadí, loga jsou barevná a posouvají se automaticky.</p>
 
     <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
 

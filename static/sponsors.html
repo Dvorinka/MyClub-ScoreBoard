@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sponzoři – Spodní lišta</title>
+  <style>
+    html, body { 
+      margin: 0; 
+      padding: 0; 
+      background: transparent; 
+      height: 100%; 
+      overflow: hidden;
+    }
+    
+    /* Bottom bar fixed to bottom for OBS Browser Source */
+    .bar {
+      position: fixed;
+      left: 0; 
+      right: 0; 
+      bottom: 0;
+      height: 80px;
+      background: #000000;
+      display: flex;
+      align-items: center;
+      padding: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    /* Scroller takes full width */
+    .scroller {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #ffffff;
+    }
+    
+    .track {
+      display: inline-flex;
+      align-items: center;
+      gap: 48px;
+      height: 100%;
+      white-space: nowrap;
+      will-change: transform;
+      animation: scroll linear infinite;
+      animation-duration: var(--scroll-duration, 40s);
+    }
+    
+    .item {
+      height: 60px;
+      width: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    
+    .item img { 
+      height: 30%; 
+      width: auto; 
+      max-width: 280px;
+      min-width: 60px;
+      object-fit: contain; 
+      display: block;
+      filter: none;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      transform: translateZ(0);
+    }
+
+    @keyframes scroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <div class="scroller" id="scroller">
+      <!-- single track with duplicated content for seamless loop -->
+      <div class="track" id="track"></div>
+    </div>
+  </div>
+
+  <script>
+    async function fetchJSON(url) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        return res.json().catch(() => null);
+      } catch {
+        return null;
+      }
+    }
+
+    function sanitizeURL(url) {
+      // Basic URL sanitization
+      if (!url || typeof url !== 'string') return null;
+      const trimmed = url.trim();
+      if (!trimmed) return null;
+      
+      // Check if it's a valid URL format
+      try {
+        const parsed = new URL(trimmed, window.location.origin);
+        // Only allow http/https and relative URLs
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:' && !trimmed.startsWith('/')) {
+          return null;
+        }
+        return trimmed;
+      } catch {
+        // If not absolute, check if it's a relative path
+        if (trimmed.startsWith('/')) return trimmed;
+        return null;
+      }
+    }
+
+    function buildItems(urls) {
+      const frag = document.createDocumentFragment();
+      for (const u of urls) {
+        const sanitized = sanitizeURL(u);
+        if (!sanitized) continue;
+        
+        const div = document.createElement('div');
+        div.className = 'item';
+        const img = document.createElement('img');
+        img.src = sanitized;
+        img.alt = '';
+        img.loading = 'eager';
+        img.decoding = 'async';
+        
+        // Handle load errors gracefully
+        img.onerror = () => {
+          div.style.display = 'none';
+        };
+        
+        div.appendChild(img);
+        frag.appendChild(div);
+      }
+      return frag;
+    }
+
+    function calculateOptimalDimensions(track) {
+      // Calculate total width and adjust scroll duration
+      let totalWidth = 0;
+      const items = Array.from(track.children);
+      const gap = 48;
+      
+      items.forEach(el => {
+        if (el.style.display !== 'none') {
+          const rect = el.getBoundingClientRect();
+          totalWidth += rect.width;
+        }
+      });
+      
+      // Add gap spacing between items
+      const visibleItems = items.filter(el => el.style.display !== 'none').length;
+      if (visibleItems > 0) {
+        totalWidth += (visibleItems - 1) * gap;
+      }
+      
+      // We duplicate content, so actual scroll distance is half the total
+      const halfWidth = totalWidth / 2;
+      
+      // Calculate duration: ~60px per second for smooth scrolling
+      const pixelsPerSecond = 60;
+      const duration = halfWidth > 0 ? Math.max(15, halfWidth / pixelsPerSecond) : 40;
+      
+      document.documentElement.style.setProperty('--scroll-duration', duration + 's');
+    }
+
+    async function init() {
+      const track = document.getElementById('track');
+      
+      try {
+        const data = await fetchJSON('/api/sponsors');
+        // Sanitize and filter valid URLs
+        const list = Array.isArray(data) ? data.filter(url => sanitizeURL(url)).slice(0, 80) : [];
+        
+        if (list.length === 0) {
+          track.innerHTML = '<div style="color: white; padding: 20px; text-align: center; width: 100%; text-transform: none;">Žádní sponzoři</div>';
+          return;
+        }
+        
+        track.innerHTML = '';
+        
+        // Duplicate content for seamless infinite scroll
+        // We need exact duplicates for the animation to loop seamlessly
+        track.appendChild(buildItems(list));
+        track.appendChild(buildItems(list));
+        
+        // Wait for all images to load before calculating dimensions
+        const imgs = track.querySelectorAll('img');
+        let remaining = imgs.length;
+        
+        if (remaining === 0) {
+          // No images, use default duration
+          calculateOptimalDimensions(track);
+        } else {
+          let completed = 0;
+          const checkComplete = () => {
+            completed++;
+            if (completed >= remaining) {
+              // Small delay to ensure layout is fully settled
+              setTimeout(() => calculateOptimalDimensions(track), 150);
+            }
+          };
+          
+          imgs.forEach(img => {
+            if (img.complete && img.naturalWidth > 0) {
+              checkComplete();
+            } else {
+              img.addEventListener('load', checkComplete, { once: true });
+              img.addEventListener('error', () => {
+                // Hide failed images but still count them as "complete"
+                img.parentElement.style.display = 'none';
+                checkComplete();
+              }, { once: true });
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Failed to load sponsors:', e);
+        track.innerHTML = '<div style="color: white; padding: 20px; text-align: center; width: 100%;">Chyba načítání</div>';
+      }
+    }
+
+    // Initialize on load
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>

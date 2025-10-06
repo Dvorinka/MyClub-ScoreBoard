@@ -426,4 +426,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
   bindIfNoInline("button[onclick*=\"swapSides()\"]", () => swapSides());
   bindIfNoInline("button[onclick*=\"startSecondHalf()\"]", () => startSecondHalf());
+
+  // Initialize sponsors admin section if present
+  try { refreshSponsorsAdmin(); } catch {}
+  try { refreshQRPreview(); } catch {}
 });
+
+// --- Sponsors & QR admin helpers ---
+async function refreshSponsorsAdmin() {
+  const container = document.getElementById('sponsorsList');
+  if (!container) return; // not on admin page
+  container.innerHTML = '';
+  try {
+    const res = await fetch('/api/sponsors');
+    if (!res.ok) throw new Error('bad');
+    const list = await res.json();
+    if (!Array.isArray(list)) return;
+    for (const url of list) {
+      const name = (url.split('/').pop() || '').trim();
+      const card = document.createElement('div');
+      card.className = 'sponsor-item';
+      const img = document.createElement('img');
+      img.src = url; img.alt = name;
+      const btn = document.createElement('button');
+      btn.textContent = 'Smazat';
+      btn.addEventListener('click', async () => {
+        try {
+          await fetch('/api/sponsors/delete?name=' + encodeURIComponent(name), { method: 'POST' });
+          refreshSponsorsAdmin();
+        } catch {}
+      });
+      card.appendChild(img);
+      card.appendChild(btn);
+      container.appendChild(card);
+    }
+  } catch {}
+}
+
+async function uploadSponsorsFromInput() {
+  const inp = document.getElementById('sponsorFiles');
+  if (!inp || !inp.files || inp.files.length === 0) return;
+  const fd = new FormData();
+  Array.from(inp.files).forEach(f => fd.append('files', f));
+  await fetch('/api/sponsors/upload', { method: 'POST', body: fd });
+  inp.value = '';
+  refreshSponsorsAdmin();
+}
+
+async function refreshQRPreview() {
+  const img = document.getElementById('qrPreview');
+  if (!img) return;
+  try {
+    const res = await fetch('/api/qr');
+    if (!res.ok) throw new Error('bad');
+    const j = await res.json();
+    img.src = j && j.qr ? j.qr : '';
+  } catch {
+    img.removeAttribute('src');
+  }
+}
+
+async function uploadQRFromInput() {
+  const inp = document.getElementById('qrFile');
+  if (!inp || !inp.files || !inp.files[0]) return;
+  const fd = new FormData();
+  fd.append('file', inp.files[0]);
+  await fetch('/api/qr/upload', { method: 'POST', body: fd });
+  inp.value = '';
+  refreshQRPreview();
+}
+
+// expose for inline handlers
+window.uploadSponsorsFromInput = uploadSponsorsFromInput;
+window.uploadQRFromInput = uploadQRFromInput;

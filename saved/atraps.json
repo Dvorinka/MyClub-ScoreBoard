@@ -1,0 +1,18 @@
+{
+  "homeName": "Bizoni UH",
+  "homeLogo": "https://www.bizoniuh.cz/img/logo.png",
+  "homeScore": 0,
+  "awayName": "FC Atraps",
+  "awayLogo": "https://visionslabs.io/wp-content/uploads/2021/08/FC-Atraps-logo-barevne-cervene.png",
+  "awayScore": 0,
+  "timer": "00:00",
+  "running": false,
+  "halfLength": 20,
+  "theme": "pill",
+  "homeShort": "BIZ",
+  "awayShort": "ATR",
+  "primaryColor": "#e51010",
+  "secondaryColor": "#b90e0e",
+  "sidesFlipped": false,
+  "half": 1
+}

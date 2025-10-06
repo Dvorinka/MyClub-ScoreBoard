@@ -1,39 +1,258 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
-	"io"
-	"log"
-	"net/http"
-	"os"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "image"
+    _ "image/gif"
+    _ "image/jpeg"
+    "image/png"
+    "io"
+    "log"
+    "mime/multipart"
+    "net/http"
+    "os"
+    "path/filepath"
+    "strconv"
+    "strings"
+    "sync"
+    "time"
 )
 
 type Scoreboard struct {
-	HomeName       string `json:"homeName"`
-	HomeLogo       string `json:"homeLogo"`
-	HomeScore      int    `json:"homeScore"`
-	AwayName       string `json:"awayName"`
-	AwayLogo       string `json:"awayLogo"`
-	AwayScore      int    `json:"awayScore"`
-	Timer          string `json:"timer"`
-	Running        bool   `json:"running"`
-	HalfLength     int    `json:"halfLength"` // v minutách
-	Theme          string `json:"theme"`
-	HomeShort      string `json:"homeShort"`
-	AwayShort      string `json:"awayShort"`
-	PrimaryColor   string `json:"primaryColor"`
-	SecondaryColor string `json:"secondaryColor"`
+    HomeName       string `json:"homeName"`
+    HomeLogo       string `json:"homeLogo"`
+    HomeScore      int    `json:"homeScore"`
+    AwayName       string `json:"awayName"`
+    AwayLogo       string `json:"awayLogo"`
+    AwayScore      int    `json:"awayScore"`
+    Timer          string `json:"timer"`
+    Running        bool   `json:"running"`
+    HalfLength     int    `json:"halfLength"` // v minutách
+    Theme          string `json:"theme"`
+    HomeShort      string `json:"homeShort"`
+    AwayShort      string `json:"awayShort"`
+    PrimaryColor   string `json:"primaryColor"`
+    SecondaryColor string `json:"secondaryColor"`
     SidesFlipped   bool   `json:"sidesFlipped"`
     Half           int    `json:"half"`
+}
+
+// listSponsorsHandler returns list of sponsor logo URLs under /uploads/sponsors
+func listSponsorsHandler(w http.ResponseWriter, r *http.Request) {
+    entries, err := os.ReadDir("uploads/sponsors")
+    if err != nil {
+        http.Error(w, "Nelze číst složku uploads/sponsors", http.StatusInternalServerError)
+        return
+    }
+    var out []string
+    for _, e := range entries {
+        if e.IsDir() { continue }
+        name := e.Name()
+        lower := strings.ToLower(name)
+        if strings.HasSuffix(lower, ".png") || strings.HasSuffix(lower, ".jpg") || strings.HasSuffix(lower, ".jpeg") || strings.HasSuffix(lower, ".gif") || strings.HasSuffix(lower, ".webp") || strings.HasSuffix(lower, ".svg") {
+            out = append(out, "/uploads/sponsors/"+name)
+        }
+    }
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(out)
+}
+
+// sanitizeAndWriteLogo trims white/transparent borders, preserves color, resizes to fixed height (64px), and writes PNG to outPath.
+func sanitizeAndWriteLogo(data []byte, outPath string) error {
+    img, _, err := image.Decode(bytes.NewReader(data))
+    if err != nil {
+        return err
+    }
+    b := img.Bounds()
+    minX, minY := b.Max.X, b.Max.Y
+    maxX, maxY := b.Min.X, b.Min.Y
+    // detect content: non-near-white with alpha > threshold
+    for y := b.Min.Y; y < b.Max.Y; y++ {
+        for x := b.Min.X; x < b.Max.X; x++ {
+            r, g, bl, a := img.At(x, y).RGBA()
+            if a <= 0x10 { // near transparent
+                continue
+            }
+            rr, gg, bb := uint8(r>>8), uint8(g>>8), uint8(bl>>8)
+            if rr > 245 && gg > 245 && bb > 245 { // nearly white background
+                continue
+            }
+            if x < minX { minX = x }
+            if y < minY { minY = y }
+            if x > maxX { maxX = x }
+            if y > maxY { maxY = y }
+        }
+    }
+    if minX >= maxX || minY >= maxY {
+        // fallback to full image
+        minX, minY = b.Min.X, b.Min.Y
+        maxX, maxY = b.Max.X-1, b.Max.Y-1
+    }
+    cw, ch := maxX-minX+1, maxY-minY+1
+    // copy cropped region to NRGBA
+    nrgba := image.NewNRGBA(image.Rect(0, 0, cw, ch))
+    for y := 0; y < ch; y++ {
+        for x := 0; x < cw; x++ {
+            nrgba.Set(x, y, img.At(minX+x, minY+y))
+        }
+    }
+    // keep original colors (no grayscale conversion)
+    // resize to 64px height using simple nearest-neighbor
+    targetH := 64
+    if ch != targetH {
+        targetW := int(float64(cw) * float64(targetH) / float64(ch))
+        if targetW < 1 { targetW = 1 }
+        resized := image.NewNRGBA(image.Rect(0, 0, targetW, targetH))
+        for y2 := 0; y2 < targetH; y2++ {
+            srcY := y2 * ch / targetH
+            for x2 := 0; x2 < targetW; x2++ {
+                srcX := x2 * cw / targetW
+                c := nrgba.NRGBAAt(srcX, srcY)
+                resized.SetNRGBA(x2, y2, c)
+            }
+        }
+        nrgba = resized
+    }
+    // write PNG
+    f, err := os.Create(outPath)
+    if err != nil {
+        return err
+    }
+    defer f.Close()
+    return png.Encode(f, nrgba)
+}
+
+// uploadSponsorsHandler accepts multipart form files under field name "files" (or single "file")
+func uploadSponsorsHandler(w http.ResponseWriter, r *http.Request) {
+    if err := r.ParseMultipartForm(200 << 20); err != nil { // 200MB
+        http.Error(w, "Neplatný upload", http.StatusBadRequest)
+        return
+    }
+    saved := 0
+    // try multiple files
+    if r.MultipartForm != nil {
+        files := r.MultipartForm.File["files"]
+        if len(files) == 0 {
+            // fallback to single
+            if f, hdr, err := r.FormFile("file"); err == nil {
+                f.Close()
+                files = []*multipart.FileHeader{hdr}
+            }
+        }
+        for _, hdr := range files {
+            if hdr == nil { continue }
+            src, err := hdr.Open()
+            if err != nil { continue }
+            // Do not defer in a loop to avoid exhausting file descriptors with many files
+            // Try to sanitize image (crop whitespace, grayscale, scale), fallback to raw copy
+            name := sanitizeFilename(hdr.Filename)
+            if name == "" { name = fmt.Sprintf("sponsor-%d", time.Now().UnixNano()) }
+            // Always store as PNG after sanitize
+            base := name
+            if i := strings.LastIndex(name, "."); i >= 0 { base = name[:i] }
+            outName := ensureUniqueFilename("uploads/sponsors", base+".png")
+            outPath := filepath.Join("uploads", "sponsors", outName)
+
+            var buf bytes.Buffer
+            if _, err := io.Copy(&buf, src); err == nil {
+                if err := sanitizeAndWriteLogo(buf.Bytes(), outPath); err == nil {
+                    saved++
+                } else {
+                    // Fallback: write original bytes with original extension
+                    rawName := ensureUniqueFilename("uploads/sponsors", name)
+                    rawPath := filepath.Join("uploads", "sponsors", rawName)
+                    _ = os.WriteFile(rawPath, buf.Bytes(), 0644)
+                    saved++
+                }
+            }
+            src.Close()
+        }
+    }
+    w.Header().Set("Content-Type", "application/json")
+    io.WriteString(w, fmt.Sprintf(`{"saved":%d}`, saved))
+}
+
+// deleteSponsorHandler deletes a sponsor logo by filename (?name=)
+func deleteSponsorHandler(w http.ResponseWriter, r *http.Request) {
+    name := sanitizeFilename(r.URL.Query().Get("name"))
+    if name == "" {
+        http.Error(w, "Chybí parametr name", http.StatusBadRequest)
+        return
+    }
+    // ensure path is within uploads/sponsors
+    path := filepath.Join("uploads", "sponsors", name)
+    if !fileExists(path) {
+        http.Error(w, "Soubor neexistuje", http.StatusNotFound)
+        return
+    }
+    if err := os.Remove(path); err != nil {
+        http.Error(w, "Nelze odstranit", http.StatusInternalServerError)
+        return
+    }
+    w.WriteHeader(http.StatusOK)
+}
+
+// getQRHandler returns the current QR image URL if present
+func getQRHandler(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "application/json")
+    path := "uploads/qr.png"
+    if fileExists(path) {
+        io.WriteString(w, `{"qr":"/uploads/qr.png"}`)
+        return
+    }
+    io.WriteString(w, `{"qr":""}`)
+}
+
+// uploadQRHandler accepts a single file and stores/overwrites uploads/qr.png
+func uploadQRHandler(w http.ResponseWriter, r *http.Request) {
+    if err := r.ParseMultipartForm(10 << 20); err != nil {
+        http.Error(w, "Neplatný upload", http.StatusBadRequest)
+        return
+    }
+    file, _, err := r.FormFile("file")
+    if err != nil {
+        http.Error(w, "Soubor nebyl nahrán (pole 'file')", http.StatusBadRequest)
+        return
+    }
+    defer file.Close()
+    // ensure uploads directory exists
+    _ = os.MkdirAll("uploads", 0755)
+    out, err := os.Create("uploads/qr.png")
+    if err != nil {
+        http.Error(w, "Nelze uložit QR", http.StatusInternalServerError)
+        return
+    }
+    defer out.Close()
+    if _, err := io.Copy(out, file); err != nil {
+        http.Error(w, "Chyba uložení QR", http.StatusInternalServerError)
+        return
+    }
+    w.WriteHeader(http.StatusOK)
+}
+
+// helpers
+func fileExists(p string) bool {
+    if _, err := os.Stat(p); err == nil { return true }
+    return false
+}
+
+// ensureUniqueFilename ensures name does not collide within dir, adding -1, -2 etc.
+func ensureUniqueFilename(dir, name string) string {
+    base := name
+    ext := ""
+    if i := strings.LastIndex(name, "."); i >= 0 {
+        base = name[:i]
+        ext = name[i:]
+    }
+    try := name
+    idx := 1
+    for fileExists(filepath.Join(dir, try)) {
+        try = fmt.Sprintf("%s-%d%s", base, idx, ext)
+        idx++
+    }
+    return try
 }
 
 // saveHandler saves current state to saved/<filename>.json
@@ -135,12 +354,10 @@ func swapSidesHandler(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 
-// startSecondHalfHandler flips sides visually for second half and continues timer from end of 1st half.
+// startSecondHalfHandler starts the second half without flipping visual sides and continues timer from end of 1st half.
 func startSecondHalfHandler(w http.ResponseWriter, r *http.Request) {
     stateMu.Lock()
-    // Flip visually only
-    state.SidesFlipped = !state.SidesFlipped
-    // Move to second half and continue from end of first half
+    // Move to second half and continue from end of first half (no side switching)
     state.Half = 2
     // Ensure elapsedSeconds reflects end of first half
     if elapsedSeconds < state.HalfLength*60 {
@@ -339,7 +556,11 @@ var httpClient = &http.Client{Timeout: 7 * time.Second}
 func main() {
     // ensure saved directory exists
     _ = os.MkdirAll("saved", 0755)
+    // ensure uploads directories exist
+    _ = os.MkdirAll("uploads/sponsors", 0755)
 	http.Handle("/", http.FileServer(http.Dir("static")))
+    // Serve uploads (sponsors logos and QR)
+    http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
 	// Serve control UI from /ovladani/
 	http.Handle("/ovladani/", http.StripPrefix("/ovladani/", http.FileServer(http.Dir("ovladani"))))
 	// Serve saved files for download/inspection
@@ -348,6 +569,10 @@ func main() {
 	http.HandleFunc("/ovladani", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/ovladani/", http.StatusMovedPermanently)
 	})
+    // Sponsors overlay page shortcut
+    http.HandleFunc("/sponsors", func(w http.ResponseWriter, r *http.Request) {
+        http.ServeFile(w, r, "static/sponsors.html")
+    })
 	http.HandleFunc("/api/state", getState)
 	http.HandleFunc("/api/update", updateState)
 	http.HandleFunc("/api/stream", stream)
@@ -363,6 +588,12 @@ func main() {
 	// New: swap sides and start second half
 	http.HandleFunc("/api/swapSides", swapSidesHandler)
 	http.HandleFunc("/api/timer/secondHalf", startSecondHalfHandler)
+    // Sponsors & QR endpoints
+    http.HandleFunc("/api/sponsors", listSponsorsHandler)
+    http.HandleFunc("/api/sponsors/upload", uploadSponsorsHandler)
+    http.HandleFunc("/api/sponsors/delete", deleteSponsorHandler)
+    http.HandleFunc("/api/qr", getQRHandler)
+    http.HandleFunc("/api/qr/upload", uploadQRHandler)
 
 	fmt.Println("Server běží na http://localhost:5000")
 	go timerLoop()

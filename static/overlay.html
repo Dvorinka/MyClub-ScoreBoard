@@ -197,17 +197,17 @@
       const homeShort = data.homeShort || (data.homeName ? data.homeName.slice(0,3).toUpperCase() : 'DOM');
       const awayShort = data.awayShort || (data.awayName ? data.awayName.slice(0,3).toUpperCase() : 'HOS');
       const timer = data.timer;
-      const flip = !!data.sidesFlipped;
+      // sides flipping disabled: home is always on the left
       const cHome = data.primaryColor || '#2c3e50';
       const cAway = data.secondaryColor || '#34495e';
-      const leftShort = flip ? awayShort : homeShort;
-      const rightShort = flip ? homeShort : awayShort;
-      const leftLogo = flip ? data.awayLogo : data.homeLogo;
-      const rightLogo = flip ? data.homeLogo : data.awayLogo;
-      const leftColor = flip ? cAway : cHome;
-      const rightColor = flip ? cHome : cAway;
-      const leftScore = flip ? data.awayScore : data.homeScore;
-      const rightScore = flip ? data.homeScore : data.awayScore;
+      const leftShort = homeShort;
+      const rightShort = awayShort;
+      const leftLogo = data.homeLogo;
+      const rightLogo = data.awayLogo;
+      const leftColor = cHome;
+      const rightColor = cAway;
+      const leftScore = data.homeScore;
+      const rightScore = data.awayScore;
       const scoreCombined = `${leftScore}-${rightScore}`;
 
       // Remap pill CSS variables to left/right colors when flipped
@@ -256,8 +256,8 @@
       document.querySelector('#layout-var3 .v3-away').style.setProperty('--bar-color', rightColor);
 
       // update var4 (simple card) - follow visual sides too
-      document.getElementById('v4-homeName').innerText = flip ? (data.awayName || 'Hosté') : (data.homeName || 'Domácí');
-      document.getElementById('v4-awayName').innerText = flip ? (data.homeName || 'Domácí') : (data.awayName || 'Hosté');
+      document.getElementById('v4-homeName').innerText = (data.homeName || 'Domácí');
+      document.getElementById('v4-awayName').innerText = (data.awayName || 'Hosté');
       document.getElementById('v4-homeScore').innerText = leftScore;
       document.getElementById('v4-awayScore').innerText = rightScore;
       document.getElementById('v4-time').innerText = timer;
