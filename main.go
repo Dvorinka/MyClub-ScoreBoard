@@ -37,6 +37,8 @@ type Scoreboard struct {
     SecondaryColor string `json:"secondaryColor"`
     SidesFlipped   bool   `json:"sidesFlipped"`
     Half           int    `json:"half"`
+    QRShowEveryMinutes     int `json:"qrEvery"`    // how often to show (minutes)
+    QRShowDurationSeconds  int `json:"qrDuration"` // how long to show (seconds)
 }
 
 // listSponsorsHandler returns list of sponsor logo URLs under /uploads/sponsors
@@ -543,6 +545,8 @@ var state = Scoreboard{
 	SecondaryColor: "#2563eb",
     SidesFlipped:   false,
     Half:           1,
+    QRShowEveryMinutes:    5,
+    QRShowDurationSeconds: 60,
 }
 
 var clients = make(map[chan string]bool)
@@ -662,6 +666,13 @@ func updateState(w http.ResponseWriter, r *http.Request) {
 	}
 	if newState.SecondaryColor != "" {
 		state.SecondaryColor = newState.SecondaryColor
+	}
+	// QR schedule
+	if newState.QRShowEveryMinutes > 0 {
+		state.QRShowEveryMinutes = newState.QRShowEveryMinutes
+	}
+	if newState.QRShowDurationSeconds > 0 {
+		state.QRShowDurationSeconds = newState.QRShowDurationSeconds
 	}
 	// Timer a Running se řídí přes dedikované endpointy
 	stateMu.Unlock()
@@ -864,6 +875,9 @@ func importHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(state.AwayShort) == "" {
 		state.AwayShort = makeShort(state.AwayName)
 	}
+	// Defaults for QR schedule
+	if state.QRShowEveryMinutes <= 0 { state.QRShowEveryMinutes = 5 }
+	if state.QRShowDurationSeconds <= 0 { state.QRShowDurationSeconds = 60 }
 	// aktualizace interních proměnných timeru
 	elapsedSeconds = parseTimerToSeconds(state.Timer)
 	if state.Running {

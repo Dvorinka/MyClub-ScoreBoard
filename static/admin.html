@@ -133,6 +133,31 @@
       </label>
     </div>
 
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+
+    <h2>QR kód (plovoucí u sponzorů)</h2>
+    <div class="form-grid">
+      <label>Soubor QR kód (PNG/JPG)
+        <input id="qrFile" type="file" accept="image/*">
+      </label>
+      <label>Interval zobrazení (minuty)
+        <input id="qrEvery" type="number" min="1" step="1" placeholder="např. 5">
+      </label>
+      <label>Doba zobrazení (sekundy)
+        <input id="qrDuration" type="number" min="5" step="5" placeholder="např. 60">
+      </label>
+    </div>
+    <div class="button-row">
+      <button onclick="uploadQRFromInput()">Nahrát QR</button>
+    </div>
+    <div class="form-grid">
+      <label>QR náhled
+        <div class="logo-wrap" style="width:140px;height:140px; background:#fff; border:1px solid #e5e7eb;">
+          <img id="qrPreview" alt="QR" src="" style="max-width: 120px; max-height: 120px; object-fit: contain;">
+        </div>
+      </label>
+    </div>
+
     <p style="margin-top:8px; color:#333">Pro OBS přidejte Browser Source s URL: <code>http://localhost:5000/sponsors</code>. Spodní lišta má černé pozadí, loga jsou barevná a posouvají se automaticky.</p>
 
     <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">

@@ -82,6 +82,12 @@ function updateInputs() {
   const sc = document.getElementById("secondaryColor");
   if (pc && state.primaryColor) pc.value = toColorInput(state.primaryColor);
   if (sc && state.secondaryColor) sc.value = toColorInput(state.secondaryColor);
+
+  // QR schedule inputs
+  const qe = document.getElementById('qrEvery');
+  const qd = document.getElementById('qrDuration');
+  if (qe) qe.value = (state.qrEvery && state.qrEvery > 0) ? state.qrEvery : (state.QRShowEveryMinutes || 5);
+  if (qd) qd.value = (state.qrDuration && state.qrDuration > 0) ? state.qrDuration : (state.QRShowDurationSeconds || 60);
 }
 
 // Attempt to auto-derive colors from logos if present
@@ -303,6 +309,14 @@ document.querySelectorAll("input").forEach(inp => {
     }
     if (id === "primaryColor") state.primaryColor = e.target.value;
     if (id === "secondaryColor") state.secondaryColor = e.target.value;
+    if (id === 'qrEvery') {
+      const v = parseInt(e.target.value, 10);
+      if (!isNaN(v) && v > 0) state.qrEvery = v;
+    }
+    if (id === 'qrDuration') {
+      const v = parseInt(e.target.value, 10);
+      if (!isNaN(v) && v > 0) state.qrDuration = v;
+    }
     saveState();
   });
 });

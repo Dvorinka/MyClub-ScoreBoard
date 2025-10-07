@@ -76,6 +76,35 @@
       from { transform: translateX(0); }
       to { transform: translateX(-50%); }
     }
+
+    /* Floating QR above the scroller (bottom-right) */
+    .qr-float {
+      position: fixed;
+      right: 16px;
+      bottom: 100px; /* above 80px bar */
+      width: 160px;
+      height: 160px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+      display: grid; place-items: center;
+      opacity: 0; visibility: hidden;
+      transform: translateY(10px) scale(0.96);
+      transition: opacity .35s ease, transform .35s ease, visibility 0s linear .35s;
+      z-index: 9999;
+    }
+    .qr-float.show {
+      opacity: 1; visibility: visible;
+      transform: translateY(0) scale(1);
+      transition: opacity .35s ease, transform .35s ease, visibility 0s;
+    }
+    .qr-float img {
+      max-width: 88%;
+      max-height: 88%;
+      object-fit: contain;
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -84,6 +113,9 @@
       <!-- single track with duplicated content for seamless loop -->
       <div class="track" id="track"></div>
     </div>
+  </div>
+  <div id="qrFloat" class="qr-float" aria-hidden="true" hidden>
+    <img id="qrImg" alt="QR" />
   </div>
 
   <script>
@@ -228,11 +260,45 @@
       }
     }
 
+    // Floating QR scheduling
+    let qrScheduleStarted = false;
+    async function setupQR() {
+      if (qrScheduleStarted) return;
+      const box = document.getElementById('qrFloat');
+      const img = document.getElementById('qrImg');
+      if (!box || !img) return;
+      const qr = await fetchJSON('/api/qr');
+      if (!qr || !qr.qr) return; // no QR uploaded
+      img.src = qr.qr;
+      // get schedule from state
+      const st = await fetchJSON('/api/state');
+      const everyMin = (st && (st.qrEvery || st.QRShowEveryMinutes)) || 5;
+      const durSec = (st && (st.qrDuration || st.QRShowDurationSeconds)) || 60;
+      const everyMs = Math.max(1, everyMin) * 60 * 1000;
+      const durMs = Math.max(5, durSec) * 1000;
+
+      const showQR = () => {
+        box.removeAttribute('hidden');
+        box.classList.add('show');
+        // hide after duration
+        window.setTimeout(() => {
+          box.classList.remove('show');
+          // delay hiding visibility to allow transition end
+          window.setTimeout(() => { box.setAttribute('hidden', ''); }, 400);
+        }, durMs);
+      };
+
+      // Show first time shortly after load for verification, then on schedule
+      window.setTimeout(showQR, 2500);
+      window.setInterval(showQR, everyMs);
+      qrScheduleStarted = true;
+    }
+
     // Initialize on load
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', init);
+      document.addEventListener('DOMContentLoaded', () => { init(); setupQR(); });
     } else {
-      init();
+      init(); setupQR();
     }
   </script>
 </body>
