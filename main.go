@@ -27,6 +27,8 @@ type Scoreboard struct {
     AwayName       string `json:"awayName"`
     AwayLogo       string `json:"awayLogo"`
     AwayScore      int    `json:"awayScore"`
+    HomeFouls      int    `json:"homeFouls"`
+    AwayFouls      int    `json:"awayFouls"`
     Timer          string `json:"timer"`
     Running        bool   `json:"running"`
     HalfLength     int    `json:"halfLength"` // v minutách
@@ -330,6 +332,11 @@ func loadSavedHandler(w http.ResponseWriter, r *http.Request) {
     state = imported
     // Defaults for older saves
     if state.Half <= 0 { state.Half = 1 }
+    // Default fouls if missing/negative
+    if state.HomeFouls < 0 { state.HomeFouls = 0 }
+    if state.HomeFouls > 5 { state.HomeFouls = 5 }
+    if state.AwayFouls < 0 { state.AwayFouls = 0 }
+    if state.AwayFouls > 5 { state.AwayFouls = 5 }
     if strings.TrimSpace(state.HomeShort) == "" {
         state.HomeShort = makeShort(state.HomeName)
     }
@@ -529,17 +536,19 @@ func makeShort(name string) string {
 }
 
 var state = Scoreboard{
-	HomeName:       "Domácí",
-	HomeLogo:       "",
-	HomeScore:      0,
-	AwayName:       "Hosté",
-	AwayLogo:       "",
-	AwayScore:      0,
-	Timer:          "00:00",
-	Running:        false,
-	HalfLength:     45,
-	Theme:          "pill",
-	HomeShort:      "DOM",
+    HomeName:       "Domácí",
+    HomeLogo:       "",
+    HomeScore:      0,
+    AwayName:       "Hosté",
+    AwayLogo:       "",
+    AwayScore:      0,
+    HomeFouls:      0,
+    AwayFouls:      0,
+    Timer:          "00:00",
+    Running:        false,
+    HalfLength:     45,
+    Theme:          "pill",
+    HomeShort:      "DOM",
 	AwayShort:      "HOS",
 	PrimaryColor:   "#1e3a8a",
 	SecondaryColor: "#2563eb",
@@ -623,12 +632,12 @@ func exportHandler(w http.ResponseWriter, r *http.Request) {
 
 // přijme update z admin panelu
 func updateState(w http.ResponseWriter, r *http.Request) {
-	var newState Scoreboard
-	err := json.NewDecoder(r.Body).Decode(&newState)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+    var newState Scoreboard
+    err := json.NewDecoder(r.Body).Decode(&newState)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
 
 	// Aktualizujeme pouze relevantní pole (vyjma řízení timeru)
 	stateMu.Lock()
@@ -636,10 +645,18 @@ func updateState(w http.ResponseWriter, r *http.Request) {
 	state.HomeLogo = newState.HomeLogo
 	state.AwayName = newState.AwayName
 	state.AwayLogo = newState.AwayLogo
-	state.HomeScore = newState.HomeScore
-	state.AwayScore = newState.AwayScore
-	state.HalfLength = newState.HalfLength
-	state.Theme = newState.Theme
+    state.HomeScore = newState.HomeScore
+    state.AwayScore = newState.AwayScore
+    // fouls (clamped 0..5)
+    clamp := func(v int) int {
+        if v < 0 { return 0 }
+        if v > 5 { return 5 }
+        return v
+    }
+    state.HomeFouls = clamp(newState.HomeFouls)
+    state.AwayFouls = clamp(newState.AwayFouls)
+    state.HalfLength = newState.HalfLength
+    state.Theme = newState.Theme
     // derive 3-letter shorts from names when not provided or invalid
     hs := strings.ToUpper(strings.TrimSpace(newState.HomeShort))
     as := strings.ToUpper(strings.TrimSpace(newState.AwayShort))

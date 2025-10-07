@@ -86,6 +86,24 @@
     <div class="seg team away"><span id="pill-awayShort">HOS</span><img id="pill-awayLogo" class="logo" alt="" src=""></div>
   </div>
 
+  <!-- FOULS BAR (visible for all themes) -->
+  <div class="fouls-bar" id="fouls-bar">
+    <div class="fouls-group" id="fouls-home">
+      <span class="foul-dot"></span>
+      <span class="foul-dot"></span>
+      <span class="foul-dot"></span>
+      <span class="foul-dot"></span>
+      <span class="foul-dot"></span>
+    </div>
+    <div class="fouls-group" id="fouls-away">
+      <span class="foul-dot"></span>
+      <span class="foul-dot"></span>
+      <span class="foul-dot"></span>
+      <span class="foul-dot"></span>
+      <span class="foul-dot"></span>
+    </div>
+  </div>
+
   <!-- VARIANT 1 -->
   <div id="layout-var1" class="v1 hidden">
     <div class="v1-scoreboard">
@@ -169,6 +187,12 @@
   </div>
 
   <script>
+    const paintFouls = (elId, count) => {
+      const dots = document.querySelectorAll(`#${elId} .foul-dot`);
+      dots.forEach((d,i)=>{
+        if (i < (count||0)) d.classList.add('active'); else d.classList.remove('active');
+      });
+    };
     const hideAll = () => {
       document.getElementById('layout-pill').classList.add('hidden');
       document.getElementById('layout-var1').classList.add('hidden');
@@ -208,6 +232,8 @@
       const rightColor = cAway;
       const leftScore = data.homeScore;
       const rightScore = data.awayScore;
+      const homeFouls = Number(data.homeFouls||0);
+      const awayFouls = Number(data.awayFouls||0);
       const scoreCombined = `${leftScore}-${rightScore}`;
 
       // Remap pill CSS variables to left/right colors when flipped
@@ -282,6 +308,10 @@
           document.getElementById('layout-pill').classList.remove('hidden');
           break;
       }
+
+      // fouls paint
+      paintFouls('fouls-home', Math.max(0, Math.min(5, homeFouls)));
+      paintFouls('fouls-away', Math.max(0, Math.min(5, awayFouls)));
     };
   </script>
 </body>

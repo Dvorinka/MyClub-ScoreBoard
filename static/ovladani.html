@@ -20,6 +20,19 @@
           <button onclick="addGoal('home')">+ Gól Domácí</button>
           <button onclick="removeGoal('home')">− Gól Domácí</button>
         </div>
+        <div class="fouls-ctrl">
+          <div class="fouls-row" id="quick-home-fouls">
+            <span class="foul-dot touch" onclick="setFouls('home',1)"></span>
+            <span class="foul-dot touch" onclick="setFouls('home',2)"></span>
+            <span class="foul-dot touch" onclick="setFouls('home',3)"></span>
+            <span class="foul-dot touch" onclick="setFouls('home',4)"></span>
+            <span class="foul-dot touch" onclick="setFouls('home',5)"></span>
+          </div>
+          <div class="fouls-buttons">
+            <button onclick="removeFoul('home')">− Faul</button>
+            <button onclick="addFoul('home')">+ Faul</button>
+          </div>
+        </div>
       </div>
       <div class="score-box">
         <div class="live-score" id="quick-score">0 - 0</div>
@@ -32,6 +45,19 @@
         <div class="button-row">
           <button onclick="addGoal('away')">+ Gól Hosté</button>
           <button onclick="removeGoal('away')">− Gól Hosté</button>
+        </div>
+        <div class="fouls-ctrl">
+          <div class="fouls-row" id="quick-away-fouls">
+            <span class="foul-dot touch" onclick="setFouls('away',1)"></span>
+            <span class="foul-dot touch" onclick="setFouls('away',2)"></span>
+            <span class="foul-dot touch" onclick="setFouls('away',3)"></span>
+            <span class="foul-dot touch" onclick="setFouls('away',4)"></span>
+            <span class="foul-dot touch" onclick="setFouls('away',5)"></span>
+          </div>
+          <div class="fouls-buttons">
+            <button onclick="removeFoul('away')">− Faul</button>
+            <button onclick="addFoul('away')">+ Faul</button>
+          </div>
         </div>
       </div>
     </div>
@@ -79,6 +105,13 @@
         if (al) {
           if (data.awayLogo) al.src = data.awayLogo; else al.removeAttribute('src');
         }
+        // Paint fouls state
+        const paint = (elId, count) => {
+          const dots = document.querySelectorAll(`#${elId} .foul-dot`);
+          dots.forEach((d,i)=>{ if (i < count) d.classList.add('active'); else d.classList.remove('active'); });
+        };
+        paint('quick-home-fouls', Math.max(0, Math.min(5, Number(data.homeFouls||0))));
+        paint('quick-away-fouls', Math.max(0, Math.min(5, Number(data.awayFouls||0))));
       } catch {}
     };
   </script>
