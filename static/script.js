@@ -36,6 +36,11 @@ function deriveShort(name) {
 async function loadState() {
   const res = await fetch("/api/state");
   state = await res.json();
+  // Ensure fouls present
+  if (typeof state.homeFouls !== 'number' || isNaN(state.homeFouls)) state.homeFouls = 0;
+  if (typeof state.awayFouls !== 'number' || isNaN(state.awayFouls)) state.awayFouls = 0;
+  state.homeFouls = Math.max(0, Math.min(5, state.homeFouls));
+  state.awayFouls = Math.max(0, Math.min(5, state.awayFouls));
   // Derive short codes if missing on load
   let changed = false;
   if (!state.homeShort || !state.homeShort.trim()) {
@@ -199,6 +204,24 @@ function resetScores() {
 function removeGoal(team) {
   if (team === "home") state.homeScore = Math.max(0, (state.homeScore || 0) - 1);
   if (team === "away") state.awayScore = Math.max(0, (state.awayScore || 0) - 1);
+  saveState();
+}
+
+// --- Fouls helpers ---
+function addFoul(team) {
+  if (team === 'home') state.homeFouls = Math.min(5, (state.homeFouls || 0) + 1);
+  if (team === 'away') state.awayFouls = Math.min(5, (state.awayFouls || 0) + 1);
+  saveState();
+}
+function removeFoul(team) {
+  if (team === 'home') state.homeFouls = Math.max(0, (state.homeFouls || 0) - 1);
+  if (team === 'away') state.awayFouls = Math.max(0, (state.awayFouls || 0) - 1);
+  saveState();
+}
+function setFouls(team, count) {
+  const v = Math.max(0, Math.min(5, Number(count||0)));
+  if (team === 'home') state.homeFouls = v;
+  if (team === 'away') state.awayFouls = v;
   saveState();
 }
 
@@ -413,6 +436,9 @@ window.importFromFile = importFromFile;
 window.exportToFile = exportToFile;
 window.saveToServer = saveToServer;
 window.loadFromServer = loadFromServer;
+window.addFoul = addFoul;
+window.removeFoul = removeFoul;
+window.setFouls = setFouls;
 
 // Fallback bindings: if inline handlers are stripped or blocked, bind events via JS
 // We skip elements that still have an inline onclick to avoid double actions
@@ -433,6 +459,16 @@ document.addEventListener('DOMContentLoaded', () => {
   bindIfNoInline("button[onclick*=\"removeGoal('home')\"]", () => removeGoal('home'));
   bindIfNoInline("button[onclick*=\"removeGoal('away')\"]", () => removeGoal('away'));
   bindIfNoInline("button[onclick*=\"resetScores()\"]", () => resetScores());
+
+  bindIfNoInline("button[onclick*=\"addFoul('home')\"]", () => addFoul('home'));
+  bindIfNoInline("button[onclick*=\"addFoul('away')\"]", () => addFoul('away'));
+  bindIfNoInline("button[onclick*=\"removeFoul('home')\"]", () => removeFoul('home'));
+  bindIfNoInline("button[onclick*=\"removeFoul('away')\"]", () => removeFoul('away'));
+  // Tap dots fallback
+  document.querySelectorAll('[onclick^="setFouls("]').forEach(el => {
+    if (el.hasAttribute('onclick')) return;
+    // not expected, but keep for completeness
+  });
 
   bindIfNoInline("button[onclick*=\"startTimer()\"]", () => startTimer());
   bindIfNoInline("button[onclick*=\"pauseTimer()\"]", () => pauseTimer());

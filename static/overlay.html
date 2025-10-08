@@ -75,15 +75,35 @@
   </script>
 </head>
 <body>
-  <!-- PILL LAYOUT (default) -->
-  <div class="scoreboard pill" id="layout-pill">
-    <div class="seg timer"><span id="pill-timer">00:00</span></div>
-    <span class="divider" aria-hidden="true"></span>
-    <div class="seg team home"><img id="pill-homeLogo" class="logo" alt="" src=""><span id="pill-homeShort">DOM</span></div>
-    <span class="divider" aria-hidden="true"></span>
-    <div class="seg score"><span id="pill-score">0-0</span></div>
-    <span class="divider" aria-hidden="true"></span>
-    <div class="seg team away"><span id="pill-awayShort">HOS</span><img id="pill-awayLogo" class="logo" alt="" src=""></div>
+  <div class="pill-wrapper" id="pill-wrapper">
+    <!-- PILL LAYOUT (default) -->
+    <div class="scoreboard pill" id="layout-pill">
+      <div class="seg timer"><span id="pill-timer">00:00</span></div>
+      <span class="divider" aria-hidden="true"></span>
+      <div class="seg team home"><img id="pill-homeLogo" class="logo" alt="" src=""><span id="pill-homeShort">DOM</span></div>
+      <span class="divider" aria-hidden="true"></span>
+      <div class="seg score"><span id="pill-score">0-0</span></div>
+      <span class="divider" aria-hidden="true"></span>
+      <div class="seg team away"><span id="pill-awayShort">HOS</span><img id="pill-awayLogo" class="logo" alt="" src=""></div>
+    </div>
+
+    <!-- FOULS BAR (visible for all themes) -->
+    <div class="fouls-bar" id="fouls-bar">
+      <div class="fouls-group" id="fouls-home">
+        <span class="foul-dot"></span>
+        <span class="foul-dot"></span>
+        <span class="foul-dot"></span>
+        <span class="foul-dot"></span>
+        <span class="foul-dot"></span>
+      </div>
+      <div class="fouls-group" id="fouls-away">
+        <span class="foul-dot"></span>
+        <span class="foul-dot"></span>
+        <span class="foul-dot"></span>
+        <span class="foul-dot"></span>
+        <span class="foul-dot"></span>
+      </div>
+    </div>
   </div>
 
   <!-- VARIANT 1 -->
@@ -169,7 +189,14 @@
   </div>
 
   <script>
+    const paintFouls = (elId, count) => {
+      const dots = document.querySelectorAll(`#${elId} .foul-dot`);
+      dots.forEach((d,i)=>{
+        if (i < (count||0)) d.classList.add('active'); else d.classList.remove('active');
+      });
+    };
     const hideAll = () => {
+      document.getElementById('pill-wrapper').classList.add('hidden');
       document.getElementById('layout-pill').classList.add('hidden');
       document.getElementById('layout-var1').classList.add('hidden');
       document.getElementById('layout-var2').classList.add('hidden');
@@ -208,6 +235,8 @@
       const rightColor = cAway;
       const leftScore = data.homeScore;
       const rightScore = data.awayScore;
+      const homeFouls = Number(data.homeFouls||0);
+      const awayFouls = Number(data.awayFouls||0);
       const scoreCombined = `${leftScore}-${rightScore}`;
 
       // Remap pill CSS variables to left/right colors when flipped
@@ -279,9 +308,14 @@
           break;
         case 'pill':
         default:
+          document.getElementById('pill-wrapper').classList.remove('hidden');
           document.getElementById('layout-pill').classList.remove('hidden');
           break;
       }
+
+      // fouls paint
+      paintFouls('fouls-home', Math.max(0, Math.min(5, homeFouls)));
+      paintFouls('fouls-away', Math.max(0, Math.min(5, awayFouls)));
     };
   </script>
 </body>
